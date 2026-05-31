@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# load helpers
+source "$REPO_ROOT/scripts/lib/util"
+
+fill_cpp_header() {
+    local filepath="$1"
+    local filename_base="$2"
+
+    cat > "$filepath" <<EOF
+#pragma once
+
+namespace $filename_base {
+}
+EOF
+}
+
+fill_cpp_source() {
+    local filepath="$1"
+    local header="$2"
+
+    cat > "$filepath" <<EOF
+#include "${header}"
+EOF
+}
+
+fill_cpp_test() {
+    local filepath="$1"
+    local header="$2"
+    local source="$3"
+    local filename_base="$4"
+
+    cat > "$filepath" <<EOF
+#include <gtest/gtest.h>
+
+#include "${header}"
+
+TEST(${source}, ${filename_base}_Testcase1) {
+    ASSERT_EQ(6, 2 + 4);
+}
+EOF
+}
+
+generate_cpp_files() {
+    local source="$1"
+    local filename_base="$2"
+
+    local header_filepath="cpp/include/${source}/${filename_base}.hpp"
+    local source_filepath="cpp/src/${source}/${filename_base}.cpp"
+    local test_filepath="cpp/test/${source}/${filename_base}Test.cpp"
+
+    confirm_and_create_files "$header_filepath" "$source_filepath" "$test_filepath"
+
+    fill_cpp_header "$header_filepath" "$filename_base"
+
+    fill_cpp_source "$source_filepath" "${source}/${filename_base}.hpp"
+
+    fill_cpp_test "$test_filepath" "${source}/${filename_base}.hpp" "$source" "$filename_base"
+}

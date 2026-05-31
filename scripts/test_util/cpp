@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cpp_build() {
+    cmake -S . -B ./build
+    cmake --build ./build -j
+}
+
+test_cpp_all() {
+    echo "Running all C++ tests..."
+
+    (
+        cd cpp
+        cpp_build
+        ./build/bouffalant_tests
+    )
+}
+
+test_cpp_source() {
+    local source="$1"
+    echo "Running C++ tests for source: $source"
+
+    (
+        cd cpp
+        cpp_build
+        ./build/bouffalant_tests --gtest_filter="${source}.*"
+    )
+}
+
+test_cpp_problem() {
+    local source="$1"
+    local problem="$2"
+    echo "Running C++ test for $source/$problem"
+
+    (
+        cd cpp
+        cpp_build
+        ./build/bouffalant_tests --gtest_filter="${source}.${problem}*"
+    )
+}

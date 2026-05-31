@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 3 ]]; then
+    echo "Usage: generate <language> <source> <problem>" >&2
+    exit 1
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# load helpers
+source "$REPO_ROOT/scripts/lib/util"
+source "$REPO_ROOT/scripts/generate_util/cpp"
+source "$REPO_ROOT/scripts/generate_util/java"
+source "$REPO_ROOT/scripts/generate_util/rust"
+
+LANGUAGE="$1"
+SOURCE="$2"
+PROBLEM="$3"
+
+validate_language "$LANGUAGE"
+SOURCE="$(normalize_source "$SOURCE")"
+
+case "$LANGUAGE" in
+    cpp)
+        filename_base="$(to_pascal_case_filename_base "$SOURCE" "$PROBLEM")"
+        generate_cpp_files "$SOURCE" "$filename_base"
+        ;;
+    java)
+        filename_base="$(to_pascal_case_filename_base "$SOURCE" "$PROBLEM")"
+        generate_java_files "$SOURCE" "$filename_base"
+        ;;
+    rust)
+        filename_base="$(to_snake_case_filename_base "$SOURCE" "$PROBLEM")"
+        generate_rust_files "$SOURCE" "$filename_base"
+        ;;
+esac

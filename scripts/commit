@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 3 ]]; then
+    echo "Usage: commit <language> <source> <problem>" >&2
+    exit 1
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+source "$REPO_ROOT/scripts/lib/util"
+source "$REPO_ROOT/scripts/test_util/cpp"
+source "$REPO_ROOT/scripts/test_util/java"
+source "$REPO_ROOT/scripts/test_util/rust"
+
+LANGUAGE="$1"
+SOURCE="$2"
+PROBLEM="$3"
+
+validate_language "$LANGUAGE"
+SOURCE="$(normalize_source "$SOURCE")"
+
+parse_language() {
+    case "$1" in
+        cpp) echo "C++" ;;
+        java) echo "Java" ;;
+        rust) echo "Rust" ;;
+        *) return 1 ;;
+    esac
+}
+
+parse_source() {
+    case "$1" in
+        codeforces) echo "Codeforces" ;;
+        leetcode) echo "LeetCode" ;;
+        *) return 1 ;;
+    esac
+}
+
+git add .
+git diff HEAD
+
+case "$LANGUAGE" in
+    cpp)
+        filename_base="$(to_pascal_case_filename_base "$SOURCE" "$PROBLEM")"
+        test_cpp_problem "$SOURCE" "$filename_base"
+        ;;
+    java)
+        filename_base="$(to_pascal_case_filename_base "$SOURCE" "$PROBLEM")"
+        test_java_problem "$SOURCE" "$filename_base"
+        ;;
+    rust)
+        filename_base="$(to_snake_case_filename_base "$SOURCE" "$PROBLEM")"
+        test_rust_problem "$SOURCE" "$filename_base"
+        ;;
+esac
+
+lang="$(parse_language "$LANGUAGE")"
+src="$(parse_source "$SOURCE")"
+
+commit_message="[ $lang | $src ] $PROBLEM"
+
+git status
+
+echo "=================================================="
+echo
+echo "📦 Commit Preview"
+echo "Language : $lang"
+echo "Source   : $src"
+echo "Problem  : $PROBLEM"
+echo
+echo "📝 Commit message:"
+echo "$commit_message"
+echo
+echo "=================================================="
+read -p "Proceed? [y/N]: " confirm
+
+if [[ "$confirm" != "y" ]]; then
+    echo "Aborted."
+    exit 1
+fi
+
+git commit -m "$commit_message"

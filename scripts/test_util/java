@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+test_java_all() {
+    echo "Running all Java tests..."
+
+    (
+        cd java
+        mvn test
+    )
+}
+
+test_java_source() {
+    local source="$1"
+    echo "Running Java tests for source: $source"
+
+    (
+        cd java
+        mvn test -Dtest="com.bouffalant.${source}.*Test"
+    )
+}
+
+test_java_problem() {
+    local source="$1"
+    local problem="$2"
+    echo "Running Java test for $source/$problem..."
+
+    (
+        cd java
+        mvn test -Dtest="com.bouffalant.${source}.${problem}Test"
+    )
+}

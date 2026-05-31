@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# load helpers
+source "$REPO_ROOT/scripts/lib/util"
+
+fill_rust_content() {
+    local file="$1"
+
+    cat > "$file" <<'EOF'
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn testcase_1() {
+        assert_eq!(6, 2 + 4);
+    }
+}
+EOF
+}
+
+update_rust_mod() {
+    local source="$1"
+    local filename_base="$2"
+
+    local mod_file="rust/src/${source}/mod.rs"
+    local mod_line="pub mod ${filename_base};"
+
+    if [[ ! -f "$mod_file" ]]; then
+        echo "ERROR: missing mod file: $mod_file" >&2
+        exit 1
+    fi
+
+    grep -Fxq "$mod_line" "$mod_file" || echo "$mod_line" >> "$mod_file"
+
+    sort -u "$mod_file" -o "$mod_file"
+}
+
+generate_rust_files() {
+    local source="$1"
+    local filename_base="$2"
+
+    local filepath="rust/src/${source}/${filename_base}.rs"
+
+    confirm_and_create_files "$filepath"
+
+    fill_rust_content "$filepath"
+
+    update_rust_mod "$source" "$filename_base"
+}

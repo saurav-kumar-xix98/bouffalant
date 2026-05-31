@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<EOF
+Usage:
+  scripts/test
+  scripts/test <language>
+  scripts/test <language> <source>
+  scripts/test <language> <source> <problem>
+EOF
+}
+
+if [[ $# -gt 3 ]]; then
+    usage >&2
+    exit 1
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# load helpers
+source "$REPO_ROOT/scripts/lib/util"
+source "$REPO_ROOT/scripts/test_util/cpp"
+source "$REPO_ROOT/scripts/test_util/java"
+source "$REPO_ROOT/scripts/test_util/rust"
+
+if [[ $# -eq 0 ]]; then
+    test_cpp_all
+    test_java_all
+    test_rust_all
+    exit 0
+fi
+
+LANGUAGE="$1"
+validate_language "$LANGUAGE"
+
+if [[ $# -eq 1 ]]; then
+    case "$LANGUAGE" in
+        cpp) test_cpp_all ;;
+        java) test_java_all ;;
+        rust) test_rust_all ;;
+    esac
+    exit 0
+fi
+
+SOURCE="$2"
+SOURCE="$(normalize_source "$SOURCE")"
+
+if [[ $# -eq 2 ]]; then
+    case "$LANGUAGE" in
+        cpp) test_cpp_source "$SOURCE" ;;
+        java) test_java_source "$SOURCE" ;;
+        rust) test_rust_source "$SOURCE" ;;
+    esac
+    exit 0
+fi
+
+PROBLEM="$3"
+
+case "$LANGUAGE" in
+    cpp) test_cpp_problem "$SOURCE" "$PROBLEM" ;;
+    java) test_java_problem "$SOURCE" "$PROBLEM" ;;
+    rust) test_rust_problem "$SOURCE" "$PROBLEM" ;;
+esac

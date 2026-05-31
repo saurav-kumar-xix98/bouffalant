@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# load helpers
+source "$REPO_ROOT/scripts/lib/util"
+
+fill_java_content() {
+    local source="$1"
+    local filename_base="$2"
+    local filepath="$3"
+
+    cat > "$filepath" <<EOF
+package com.bouffalant.${source};
+
+public class ${filename_base} {
+}
+EOF
+}
+
+fill_java_test_content() {
+    local source="$1"
+    local filename_base="$2"
+    local filepath="$3"
+
+    cat > "$filepath" <<EOF
+package com.bouffalant.${source};
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class ${filename_base}Test {
+    @Test
+    void testcase1() {
+        assertEquals(6, 2 + 4);
+    }
+}
+EOF
+}
+
+generate_java_files() {
+    local source="$1"
+    local filename_base="$2"
+
+    local source_filepath="java/src/main/java/com/bouffalant/${source}/${filename_base}.java"
+    local test_filepath="java/src/test/java/com/bouffalant/${source}/${filename_base}Test.java"
+
+    confirm_and_create_files "$source_filepath" "$test_filepath"
+
+    fill_java_content "$source" "$filename_base" "$source_filepath"
+    fill_java_test_content "$source" "$filename_base" "$test_filepath"
+}

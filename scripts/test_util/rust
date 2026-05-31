@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+test_rust_all() {
+    echo "Running all Rust tests..."
+
+    (
+        cd rust
+        cargo test
+    )
+}
+
+test_rust_source() {
+    local source="$1"
+
+    echo "Running Rust tests for source: $source"
+
+    (
+        cd rust
+        cargo test "$source"
+    )
+}
+
+test_rust_problem() {
+    local source="$1"
+    local problem="$2"
+
+    echo "Running Rust test for $source/$problem..."
+
+    (
+        cd rust
+        cargo test "${source}::${problem}"
+    )
+}

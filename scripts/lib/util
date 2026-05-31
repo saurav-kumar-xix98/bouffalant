@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+confirm_and_create_files() {
+    local files=("$@")
+
+    for f in "${files[@]}"; do
+        local dir
+        dir="$(dirname "$f")"
+
+        if [[ ! -d "$dir" ]]; then
+            echo "ERROR: directory does not exist: $dir" >&2
+            return 1
+        fi
+
+        if [[ -e "$f" ]]; then
+            echo "ERROR: file already exists: $f" >&2
+            return 1
+        fi
+    done
+
+    echo "The following files will be created:"
+    for f in "${files[@]}"; do
+        echo "  $f"
+    done
+
+    echo
+    read -p "Proceed? [y/N]: " confirm
+    if [[ "$confirm" != "y" ]]; then
+        echo "Aborted."
+        return 1
+    fi
+
+    for f in "${files[@]}"; do
+        touch "$f"
+    done
+}
+
+validate_language() {
+    local language="$1"
+
+    case "$language" in
+        cpp|java|rust)
+            return 0
+            ;;
+        *)
+            echo "ERROR: unknown language: $language" >&2
+            return 1
+            ;;
+    esac
+}
+
+normalize_source() {
+    local source="$1"
+
+    case "$source" in
+        codeforces|cf)
+            echo "codeforces"
+            ;;
+        leetcode|lc)
+            echo "leetcode"
+            ;;
+        *)
+            echo "ERROR: unknown source: $source" >&2
+            return 1
+            ;;
+    esac
+}
+
+build_leetcode_id() {
+    local id="$1"
+
+    # validate format: 1-4 digits
+    if [[ ! "$id" =~ ^[0-9]{1,4}$ ]]; then
+        echo "ERROR: invalid leetcode id format: $id" >&2
+        return 1
+    fi
+
+    # zero pad to 4 digits
+    printf "LC%04d" "$id"
+}
+
+build_codeforces_id() {
+    local id="$1"
+
+    # validate format: 1-4 digits + uppercase letter + optional digit
+    if [[ ! "$id" =~ ^[0-9]{1,4}[A-Z][0-9]?$ ]]; then
+        echo "ERROR: invalid codeforces id format: $id" >&2
+        return 1
+    fi
+
+    # extract parts
+    local num="${id%%[A-Z]*}"
+    local rest="${id#${num}}"
+
+    # pad number to 4 digits
+    printf "CF%04d%s" "$num" "$rest"
+}
+
+extract_problem_id() {
+    local source="$1"
+    local input="$2"
+
+
+    local raw_id="${input%% *}"
+
+    # remove trailing dot
+    raw_id="${raw_id%.}"
+
+    local result="$(build_${source}_id "$raw_id")" || return $?
+
+    echo "$result"
+}
+
+normalize_problem_title() {
+    local title="$1"
+
+    # remove apostrophes
+    title="${title//\'/}"
+
+    # replace punctuation with spaces
+    title="${title//,/ }"
+    title="${title//(/ }"
+    title="${title//)/ }"
+    title="${title//-/ }"
+    title="${title//:/ }"
+
+    # collapse repeated spaces
+    title="$(echo "$title" | tr -s ' ')"
+
+    # trim leading/trailing spaces
+    title="${title#"${title%%[![:space:]]*}"}"
+    title="${title%"${title##*[![:space:]]}"}"
+
+    echo "$title"
+}
+
+capitalize_words() {
+    local title="$1"
+    local result=""
+    local word first rest
+
+    for word in $title; do
+        first="${word:0:1}"
+        rest="${word:1}"
+
+        # force only first char to uppercase
+        first="$(echo "$first" | tr '[:lower:]' '[:upper:]')"
+
+        result+="${first}${rest} "
+    done
+
+    # trim trailing space
+    echo "${result%" "}"
+}
+
+validate_title() {
+    local title="$1"
+
+    if [[ "$title" =~ [^a-zA-Z0-9[:space:]] ]]; then
+        echo "ERROR: invalid character in title: $title" >&2
+        return 1
+    fi
+}
+
+extract_problem_title() {
+    local input="$1"
+    local title="${input#* }"
+
+    title="$(normalize_problem_title "$title")"
+    title="$(capitalize_words "$title")"
+    validate_title "$title"
+
+    echo "$title"
+}
+
+to_pascal_case() {
+    local id="$1"
+    local title="$2"
+
+    local result="$id"
+
+    for word in $title; do
+        local first="${word:0:1}"
+        local rest="${word:1}"
+
+        result+="${first}${rest}"
+    done
+
+    echo "$result"
+}
+
+to_snake_case() {
+    local id="$1"
+    local title="$2"
+
+    id="$(echo "$id" | tr '[:upper:]' '[:lower:]')"
+
+    title="$(echo "$title" | tr '[:upper:]' '[:lower:]')"
+    title="$(echo "$title" | tr ' ' '_')"
+
+    echo "${id}_${title}"
+}
+
+to_pascal_case_filename_base() {
+    local source="$1"
+    local problem="$2"
+
+    local id="$(extract_problem_id "$source" "$problem")" || return $?
+    local title="$(extract_problem_title "$problem")" || return $?
+
+    to_pascal_case "$id" "$title"
+}
+
+to_snake_case_filename_base() {
+    local source="$1"
+    local problem="$2"
+
+    local id="$(extract_problem_id "$source" "$problem")" || return $?
+    local title="$(extract_problem_title "$problem")" || return $?
+
+    to_snake_case "$id" "$title"
+}
